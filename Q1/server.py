@@ -3,16 +3,20 @@ import socket
 HOST = "127.0.0.1"
 PORT = 5000
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-client_socket.connect((HOST, PORT))
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
 
-message = input("Enter a string: ")
+print("Waiting for client...")
 
-client_socket.send(message.encode())
+conn, addr = server_socket.accept()
 
-data = client_socket.recv(1024).decode()
+data = conn.recv(1024).decode()
 
-print("Uppercase string:", data)
+result = data.upper()
 
-client_socket.close()
+conn.send(result.encode())
+
+conn.close()
+server_socket.close()
