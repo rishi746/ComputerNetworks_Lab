@@ -3,20 +3,20 @@ import socket
 HOST = "127.0.0.1"
 PORT = 5000
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server_socket.bind((HOST, PORT))
-server_socket.listen(1)
+client_socket.connect((HOST, PORT))
 
-print("Waiting for client...")
+a = input("Enter first number: ")
+operator = input("Enter operator (+, -, *, /): ")
+b = input("Enter second number: ")
 
-conn, addr = server_socket.accept()
+message = a + " " + operator + " " + b
 
-data = conn.recv(1024).decode()
+client_socket.send(message.encode())
 
-result = data.upper()
+result = client_socket.recv(1024).decode()
 
-conn.send(result.encode())
+print("Result:", result)
 
-conn.close()
-server_socket.close()
+client_socket.close()

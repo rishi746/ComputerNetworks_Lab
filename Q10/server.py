@@ -3,16 +3,22 @@ import socket
 HOST = "127.0.0.1"
 PORT = 5000
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-client_socket.connect((HOST, PORT))
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
 
-numbers = input("Enter integers separated by spaces: ")
+conn, addr = server_socket.accept()
 
-client_socket.send(numbers.encode())
+data = conn.recv(1024).decode()
 
-result = client_socket.recv(1024).decode()
+numbers = list(map(int, data.split()))
 
-print("Sorted array:", result)
+numbers.sort()
 
-client_socket.close()
+result = " ".join(map(str, numbers))
+
+conn.send(result.encode())
+
+conn.close()
+server_socket.close()
