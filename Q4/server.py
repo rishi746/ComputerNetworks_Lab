@@ -1,25 +1,28 @@
 import socket
+import struct
 
-HOST = "127.0.0.1"
-PORT = 5000
+server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server.bind(('127.0.0.1', 5000))
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+expected_seq = 1
+dropped_seq2 = False
 
-server_socket.bind((HOST, PORT))
-server_socket.listen(1)
+with open("received_sample.txt", "wb") as f:
+    while True:
+        data, addr = server.recvfrom(4096)
+        header_size = struct.calcsize("!I")
+        seq = struct.unpack("!I", data[:header_size])[0]
+        chunk = data[header_size:]
 
-conn, addr = server_socket.accept()
+        if seq == 2 and not dropped_seq2:
+            dropped_seq2 = True
+            continue
+            
+        if seq == expected_seq:
+            if chunk == b"EOF":
+                server.sendto(struct.pack("!I", seq), addr)
+                break
+            f.write(chunk)
+            expected_seq += 1
 
-while True:
-
-    data = conn.recv(1024).decode()
-
-    if data == "exit":
-        break
-
-    print("Received:", data)
-
-    conn.send(data.encode())
-
-conn.close()
-server_socket.close()
+        server.sendto(struct.pack("!I", seq), addr)

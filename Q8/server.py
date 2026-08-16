@@ -1,29 +1,47 @@
 import socket
+import threading
 
-HOST = "127.0.0.1"
-PORT = 5000
+questions = [
+    {"question": "Which protocol is connection-oriented?\nA. UDP\nB. TCP\nC. IP\nD. ARP", "answer": "B"},
+    {"question": "Which device forwards packets between networks?\nA. Switch\nB. Hub\nC. Router\nD. Repeater", "answer": "C"}
+]
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+scores = {}
+score_lock = threading.Lock()
 
-server_socket.bind((HOST, PORT))
-server_socket.listen(1)
+def handle_client(client_socket):
+    try:
+        username = client_socket.recv(1024).decode().strip()
+        with score_lock:
+            scores[username] = 0
 
-conn, addr = server_socket.accept()
+        for i, q in enumerate(questions):
+            client_socket.sendall(f"Question {i+1}:\n{q['question']}".encode())
+            
+            while True:
+                answer = client_socket.recv(1024).decode().strip().upper()
+                if answer in ['A', 'B', 'C', 'D']:
+                    break
+                client_socket.sendall(b"INVALID")
 
-file = open("received_file.txt", "wb")
+            if answer == q['answer']:
+                with score_lock:
+                    scores[username] += 1
+                client_socket.sendall(f"Correct answer.\nCurrent Score: {scores[username]}".encode())
+            else:
+                client_socket.sendall(f"Incorrect answer.\nCurrent Score: {scores[username]}".encode())
+
+        final_msg = f"Final Score: {scores[username]} / {len(questions)}"
+        client_socket.sendall(final_msg.encode())
+    except:
+        pass
+    finally:
+        client_socket.close()
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('127.0.0.1', 5000))
+server.listen()
 
 while True:
-
-    data = conn.recv(1024)
-
-    if not data:
-        break
-
-    file.write(data)
-
-file.close()
-
-print("File received successfully")
-
-conn.close()
-server_socket.close()
+    client, _ = server.accept()
+    threading.Thread(target=handle_client, args=(client,)).start()

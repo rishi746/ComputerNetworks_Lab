@@ -1,33 +1,38 @@
 import socket
+import hashlib
+import os
 
-HOST = "127.0.0.1"
-PORT = 5000
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('127.0.0.1', 5000))
+server.listen()
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client_socket, _ = server.accept()
 
-server_socket.bind((HOST, PORT))
+metadata = client_socket.recv(1024).decode().split('|')
+filename = os.path.basename(metadata[0])
+filesize = int(metadata[1])
+original_hash = metadata[2]
 
+client_socket.send(b"READY")
 
-def is_prime(n):
-    if n <= 1:
-        return False
+sha256_hash = hashlib.sha256()
+received_bytes = 0
 
-    for i in range(2, int(n ** 0.5) + 1):
-        if n % i == 0:
-            return False
+with open("received_" + filename, "wb") as f:
+    while received_bytes < filesize:
+        chunk = client_socket.recv(min(4096, filesize - received_bytes))
+        if not chunk:
+            break
+        f.write(chunk)
+        sha256_hash.update(chunk)
+        received_bytes += len(chunk)
 
-    return True
+calculated_hash = sha256_hash.hexdigest()
 
-
-data, addr = server_socket.recvfrom(1024)
-
-number = int(data.decode())
-
-if is_prime(number):
-    result = "Prime number"
+if calculated_hash == original_hash:
+    client_socket.send(b"SHA-256 verification successful. File integrity verified.")
 else:
-    result = "Not a prime number"
+    client_socket.send(b"FILE INTEGRITY CHECK FAILED")
 
-server_socket.sendto(result.encode(), addr)
-
-server_socket.close()
+client_socket.close()
+server.close()

@@ -1,18 +1,37 @@
 import socket
+import threading
+import sys
 
-HOST = "127.0.0.1"
-PORT = 5000
+def receive_messages(sock):
+    while True:
+        try:
+            message = sock.recv(1024).decode()
+            if not message:
+                break
+            print(f"\n{message}\n> ", end="", flush=True)
+        except:
+            break
+    sock.close()
+    sys.exit()
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def start_client():
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(('127.0.0.1', 5000))
+    
+    username = input("Enter username: ")
+    client.send(username.encode())
 
-client_socket.connect((HOST, PORT))
+    threading.Thread(target=receive_messages, args=(client,)).start()
 
-message = input("Enter a string: ")
+    while True:
+        try:
+            msg = input("> ")
+            client.send(msg.encode())
+            if msg.lower() == '/quit':
+                break
+        except:
+            break
+    client.close()
 
-client_socket.send(message.encode())
-
-data = client_socket.recv(1024).decode()
-
-print("Uppercase string:", data)
-
-client_socket.close()
+if __name__ == "__main__":
+    start_client()

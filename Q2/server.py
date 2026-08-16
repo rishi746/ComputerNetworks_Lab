@@ -1,41 +1,27 @@
 import socket
+import threading
+import math
 
-HOST = "127.0.0.1"
-PORT = 5000
+def handle_client(client_socket):
+    try:
+        data = client_socket.recv(1024).decode().strip()
+        num = int(data)
+        if num < 0:
+            client_socket.send("Error: Factorial not defined for negative numbers.".encode())
+        else:
+            result = math.factorial(num)
+            client_socket.send(f"Factorial of {num} = {result}".encode())
+    except ValueError:
+        client_socket.send("Error: Invalid input. Please enter an integer.".encode())
+    except Exception:
+        pass
+    finally:
+        client_socket.close()
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('127.0.0.1', 5000))
+server.listen()
 
-server_socket.bind((HOST, PORT))
-server_socket.listen(1)
-
-conn, addr = server_socket.accept()
-
-data = conn.recv(1024).decode()
-
-a, operator, b = data.split()
-
-a = float(a)
-b = float(b)
-
-if operator == "+":
-    result = a + b
-
-elif operator == "-":
-    result = a - b
-
-elif operator == "*":
-    result = a * b
-
-elif operator == "/":
-    if b != 0:
-        result = a / b
-    else:
-        result = "Cannot divide by zero"
-
-else:
-    result = "Invalid operator"
-
-conn.send(str(result).encode())
-
-conn.close()
-server_socket.close()
+while True:
+    client_socket, _ = server.accept()
+    threading.Thread(target=handle_client, args=(client_socket,)).start()
