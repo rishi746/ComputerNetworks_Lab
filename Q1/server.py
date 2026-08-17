@@ -1,53 +1,53 @@
 import socket
 import threading
 
+
+HOST, PORT = "127.0.0.1", 5000
 clients = {}
-clients_lock = threading.Lock()
+lock = threading.Lock()
 
-def broadcast(message, sender_socket):
-    with clients_lock:
-        for client_socket in clients:
-            if client_socket != sender_socket:
-                try:
-                    client_socket.send(message.encode())
-                except:
-                    pass
 
-def handle_client(client_socket):
+def send_line(connection, message):
+    connection.sendall(message.encode() + b"\n")
+
+
+def broadcast(sender, message):
+    with lock:
+        recipients = [connection for connection in clients if connection is not sender]
+    for connection in recipients:
+        try:
+            send_line(connection, message)
+        except OSError:
+            pass
+
+
+def handle(connection):
+    name = None
     try:
-        username = client_socket.recv(1024).decode().strip()
-        with clients_lock:
-            if username in clients.values():
-                client_socket.send("Error: Username already taken.".encode())
-                client_socket.close()
+        reader = connection.makefile("r", encoding="utf-8")
+        name = reader.readline().strip()
+        with lock:
+            if not name or name in clients.values():
+                send_line(connection, "Username already taken")
+                name = None
                 return
-            clients[client_socket] = username
-        
-        client_socket.send(f"Welcome, {username}!".encode())
-        broadcast(f"[{username}] has joined the chat.", client_socket)
-
-        while True:
-            msg = client_socket.recv(1024).decode()
-            if not msg or msg.lower() == '/quit':
-                break
-            broadcast(f"[{username}] {msg}", client_socket)
-    except:
+            clients[connection] = name
+        send_line(connection, "Username accepted")
+        broadcast(connection, f"{name} joined the chat")
+        for message in reader:
+            broadcast(connection, f"{name}: {message.rstrip()}")
+    except OSError:
         pass
     finally:
-        with clients_lock:
-            if client_socket in clients:
-                username = clients[client_socket]
-                del clients[client_socket]
-                broadcast(f"[{username}] has left the chat.", None)
-        client_socket.close()
+        with lock:
+            clients.pop(connection, None)
+        if name:
+            broadcast(connection, f"{name} left the chat")
+        connection.close()
 
-def start_server():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('127.0.0.1', 5000))
-    server.listen()
+
+with socket.create_server((HOST, PORT)) as server:
+    print(f"Chat server listening on {HOST}:{PORT}")
     while True:
-        client_socket, _ = server.accept()
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
-
-if __name__ == "__main__":
-    start_server()
+        connection, _ = server.accept()
+        threading.Thread(target=handle, args=(connection,), daemon=True).start()

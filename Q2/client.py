@@ -1,12 +1,11 @@
 import socket
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(('127.0.0.1', 5000))
 
-num = input("Enter an integer: ")
-client.send(num.encode())
+HOST, PORT = "127.0.0.1", 5000
 
-response = client.recv(1024).decode()
-print("Server Response:\n" + response)
 
-client.close()
+with socket.create_connection((HOST, PORT)) as client:
+    reader = client.makefile("r", encoding="utf-8")
+    while (value := input("Enter a non-negative integer (blank to quit): ")):
+        client.sendall(value.encode() + b"\n")
+        print("Factorial:", reader.readline().strip())

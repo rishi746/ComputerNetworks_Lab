@@ -1,27 +1,25 @@
+import math
 import socket
 import threading
-import math
 
-def handle_client(client_socket):
-    try:
-        data = client_socket.recv(1024).decode().strip()
-        num = int(data)
-        if num < 0:
-            client_socket.send("Error: Factorial not defined for negative numbers.".encode())
-        else:
-            result = math.factorial(num)
-            client_socket.send(f"Factorial of {num} = {result}".encode())
-    except ValueError:
-        client_socket.send("Error: Invalid input. Please enter an integer.".encode())
-    except Exception:
-        pass
-    finally:
-        client_socket.close()
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(('127.0.0.1', 5000))
-server.listen()
+HOST, PORT = "127.0.0.1", 5000
 
-while True:
-    client_socket, _ = server.accept()
-    threading.Thread(target=handle_client, args=(client_socket,)).start()
+
+def handle(connection):
+    with connection:
+        reader = connection.makefile("r", encoding="utf-8")
+        for value in reader:
+            try:
+                number = int(value)
+                response = str(math.factorial(number)) if number >= 0 else "Invalid input"
+            except ValueError:
+                response = "Invalid input"
+            connection.sendall(response.encode() + b"\n")
+
+
+with socket.create_server((HOST, PORT)) as server:
+    print(f"Factorial server listening on {HOST}:{PORT}")
+    while True:
+        connection, _ = server.accept()
+        threading.Thread(target=handle, args=(connection,), daemon=True).start()
