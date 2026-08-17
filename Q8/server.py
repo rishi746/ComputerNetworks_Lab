@@ -2,8 +2,8 @@ import socket
 import threading
 
 questions = [
-    {"question": "Which protocol is connection-oriented?\nA. UDP\nB. TCP\nC. IP\nD. ARP", "answer": "B"},
-    {"question": "Which device forwards packets between networks?\nA. Switch\nB. Hub\nC. Router\nD. Repeater", "answer": "C"}
+    {"question": "What is 1+1?\nA. 1\nB. 2\nC. 3\nD. 4", "answer": "B"},
+    {"question": "What is the capital of France?\nA. London\nB. Berlin\nC. Paris\nD. Madrid", "answer": "C"}
 ]
 
 scores = {}
